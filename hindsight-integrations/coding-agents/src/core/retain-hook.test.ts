@@ -168,6 +168,52 @@ describe("buildRetain", () => {
     ]);
   });
 
+  it.each([false, true])(
+    "does not retain or clean up empty filtered turns (existing cursor: %s)",
+    async (existing) => {
+      writeFileSync(
+        file,
+        JSON.stringify({
+          type: "response_item",
+          payload: {
+            type: "message",
+            role: "user",
+            content: [
+              { type: "input_text", text: "<environment_context>synthetic</environment_context>" },
+            ],
+            internal_chat_message_metadata_passthrough: {
+              content_item_kinds: ["environments.environment_context"],
+            },
+          },
+        })
+      );
+      const retain = vi.fn().mockResolvedValue(undefined);
+      const cursors = memoryCursorStore();
+      if (existing)
+        cursors.write("sess-empty", {
+          turns: 1,
+          fingerprint: fingerprintTurns(
+            [{ role: "user", content: "<environment_context>synthetic</environment_context>" }],
+            1
+          ),
+          bank: "test-bank",
+        });
+      const previous = cursors.read("sess-empty");
+      const args = {
+        harness: "codex",
+        sessionId: "sess-empty",
+        transcriptPath: file,
+        readTranscript: readCodexTranscript,
+        cursors,
+        client: { retain, bank: "test-bank", supportsIdempotentRetain: async () => true },
+      };
+      await buildRetain(args);
+      await buildRetain(args);
+      expect(retain).not.toHaveBeenCalled();
+      expect(cursors.read("sess-empty")).toEqual(previous);
+    }
+  );
+
   it("filters fallback provenance and internal channels through repeated Stop retention", async () => {
     const stamp = "2026-09-22T12:00:00Z";
     const message = (role: string, content: unknown[], extra = {}) =>
@@ -180,13 +226,13 @@ describe("buildRetain", () => {
       message(
         "user",
         [
-          { type: "input_text", text: "startup rules" },
+          { type: "input_text", text: "<environment_context>synthetic</environment_context>" },
           { type: "input_image", image_url: "synthetic" },
           { type: "input_text", text: "Keep ID TASK-42" },
         ],
         {
           internal_chat_message_metadata_passthrough: {
-            content_item_kinds: ["agents_md.instructions", "user.image", "user.text"],
+            content_item_kinds: ["environments.environment_context", "user.image", "user.text"],
           },
         }
       ),

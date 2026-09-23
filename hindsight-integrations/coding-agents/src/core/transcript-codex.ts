@@ -85,6 +85,7 @@ function contentText(content: ContentItem[] | undefined): string {
 const startupKinds = new Set([
   "agents_md.instructions",
   "environments.instructions",
+  "environments.environment_context",
   "plugins.recommendations",
   "plugins.usage_instructions",
 ]);

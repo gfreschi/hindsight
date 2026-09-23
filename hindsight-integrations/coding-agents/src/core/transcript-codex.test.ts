@@ -314,7 +314,7 @@ describe("Codex provenance and assistant channels", () => {
     "agents_md.instructions",
     "user.image",
     "user.text",
-    "environments.instructions",
+    "environments.environment_context",
     "future.kind",
   ];
   const annotated = (metadata: unknown, blocks: unknown = content) =>
@@ -337,9 +337,27 @@ describe("Codex provenance and assistant channels", () => {
     ]);
   });
 
+  const environment = "<environment_context>\n<cwd>/example</cwd>\n</environment_context>";
+  it.each([undefined, { content_item_kinds: ["environments.environment_context"] }])(
+    "excludes environment-only content with annotation %j",
+    (metadata) => {
+      writeFileSync(file, annotated(metadata, [text(environment)]));
+      expect(readCodexTranscript(file)).toEqual([]);
+    }
+  );
+
+  it.each(["user.text", "future.environment"])(
+    "preserves literal environment marked %s",
+    (kind) => {
+      writeFileSync(file, annotated({ content_item_kinds: [kind] }, [text(environment)]));
+      expect(readCodexTranscript(file)).toEqual([{ role: "user", content: environment }]);
+    }
+  );
+
   it.each([
-    "agents_md.instructions",
     "environments.instructions",
+    "agents_md.instructions",
+    "environments.environment_context",
     "plugins.recommendations",
     "plugins.usage_instructions",
   ])("drops known startup kind %s", (kind) => {
@@ -360,7 +378,7 @@ describe("Codex provenance and assistant channels", () => {
         "agents_md.instructions",
         null,
         "user.text",
-        "environments.instructions",
+        "environments.environment_context",
         "future.kind",
       ],
     },
