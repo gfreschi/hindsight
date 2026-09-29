@@ -211,6 +211,8 @@ export function readCodexTranscript(path: string): TransportTurn[] {
     if (p.type === "message") {
       // `developer` messages are Codex's system prompt + OUR injected hook context → drop entirely.
       if (p.role === "assistant") {
+        // analysis/reasoning is the model thinking out loud, not what it told the user; retaining it
+        // would extract facts from discarded hypotheses. Either field may carry the marker.
         if (
           p.channel === "analysis" ||
           p.channel === "reasoning" ||
